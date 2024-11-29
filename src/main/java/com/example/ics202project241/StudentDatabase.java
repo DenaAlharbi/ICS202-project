@@ -35,5 +35,6 @@ public class StudentDatabase {
             database.addStudent(student);
         }
         System.out.println(database);
+        System.out.println(database.searchByFirstName("Fahad"));
     }
 }

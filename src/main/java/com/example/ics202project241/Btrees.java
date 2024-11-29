@@ -604,18 +604,22 @@ public class Btrees {
     }
 
     public Student searchById(String id) {
+
         return idIndex.search11(id.hashCode());
     }
 
     public List<Student> searchByLastName(String lastName) {
+
         return lastNameIndex.searchByLastName(lastName);
     }
 
     public List<Student> searchByFirstName(String firstName) {
+
         return firstNameIndex.searchByFirstName(firstName);
     }
 
     public List<Student> searchByLevel(String level) {
+
         return levelIndex.searchByLevel(level);
     }
 }
