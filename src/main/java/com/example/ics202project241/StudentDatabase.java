@@ -34,5 +34,6 @@ public class StudentDatabase {
         for (Student student : students) {
             database.addStudent(student);
         }
+        System.out.println(database);
     }
 }
