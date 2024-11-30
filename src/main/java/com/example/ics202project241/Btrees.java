@@ -1,626 +1,346 @@
 package com.example.ics202project241;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
+import java.util.Scanner;
 
 public class Btrees {
-    class BPlusTree {
-        int m;
-        InternalNode root;
-        LeafNode firstLeaf;
-
-        // Binary search program
-        private int binarySearch(DictionaryPair[] dps, int numPairs, int t) {
-            Comparator<DictionaryPair> c = new Comparator<DictionaryPair>() {
-                @Override
-                public int compare(DictionaryPair o1, DictionaryPair o2) {
-                    Integer a = Integer.valueOf(o1.key);
-                    Integer b = Integer.valueOf(o2.key);
-                    return a.compareTo(b);
-                }
-            };
-            return Arrays.binarySearch(dps, 0, numPairs, new DictionaryPair(t, 0), c);
-        }
-
-        // Find the leaf node
-        private LeafNode findLeafNode(int key) {
-
-            Integer[] keys = this.root.keys;
-            int i;
-
-            for (i = 0; i < this.root.degree - 1; i++) {
-                if (key < keys[i]) {
-                    break;
-                }
-            }
-
-            Node child = this.root.childPointers[i];
-            if (child instanceof LeafNode) {
-                return (LeafNode) child;
-            } else {
-                return findLeafNode((InternalNode) child, key);
-            }
-        }
-
-        // Find the leaf node
-        private LeafNode findLeafNode(InternalNode node, int key) {
-
-            Integer[] keys = node.keys;
-            int i;
-
-            for (i = 0; i < node.degree - 1; i++) {
-                if (key < keys[i]) {
-                    break;
-                }
-            }
-            Node childNode = node.childPointers[i];
-            if (childNode instanceof LeafNode) {
-                return (LeafNode) childNode;
-            } else {
-                return findLeafNode((InternalNode) node.childPointers[i], key);
-            }
-        }
-
-        // Finding the index of the pointer
-        private int findIndexOfPointer(Node[] pointers, LeafNode node) {
-            int i;
-            for (i = 0; i < pointers.length; i++) {
-                if (pointers[i] == node) {
-                    break;
-                }
-            }
-            return i;
-        }
-
-        // Get the mid-point
-        private int getMidpoint() {
-            return (int) Math.ceil((this.m + 1) / 2.0) - 1;
-        }
-
-        // Balance the tree
-        private void handleDeficiency(InternalNode in) {
-
-            InternalNode sibling;
-            InternalNode parent = in.parent;
-
-            if (this.root == in) {
-                for (int i = 0; i < in.childPointers.length; i++) {
-                    if (in.childPointers[i] != null) {
-                        if (in.childPointers[i] instanceof InternalNode) {
-                            this.root = (InternalNode) in.childPointers[i];
-                            this.root.parent = null;
-                        } else if (in.childPointers[i] instanceof LeafNode) {
-                            this.root = null;
-                        }
-                    }
-                }
-            } else if (in.leftSibling != null && in.leftSibling.isLendable()) {
-                sibling = in.leftSibling;
-            } else if (in.rightSibling != null && in.rightSibling.isLendable()) {
-                sibling = in.rightSibling;
-
-                int borrowedKey = sibling.keys[0];
-                Node pointer = sibling.childPointers[0];
-
-                in.keys[in.degree - 1] = parent.keys[0];
-                in.childPointers[in.degree] = pointer;
-
-                parent.keys[0] = borrowedKey;
-
-                sibling.removePointer(0);
-                Arrays.sort(sibling.keys);
-                sibling.removePointer(0);
-                shiftDown(in.childPointers, 1);
-            } else if (in.leftSibling != null && in.leftSibling.isMergeable()) {
-
-            } else if (in.rightSibling != null && in.rightSibling.isMergeable()) {
-                sibling = in.rightSibling;
-                sibling.keys[sibling.degree - 1] = parent.keys[parent.degree - 2];
-                Arrays.sort(sibling.keys, 0, sibling.degree);
-                parent.keys[parent.degree - 2] = null;
-
-                for (int i = 0; i < in.childPointers.length; i++) {
-                    if (in.childPointers[i] != null) {
-                        sibling.prependChildPointer(in.childPointers[i]);
-                        in.childPointers[i].parent = sibling;
-                        in.removePointer(i);
-                    }
-                }
-
-                parent.removePointer(in);
-
-                sibling.leftSibling = in.leftSibling;
-            }
-
-            if (parent != null && parent.isDeficient()) {
-                handleDeficiency(parent);
-            }
-        }
-
-        private boolean isEmpty() {
-            return firstLeaf == null;
-        }
-
-        private int linearNullSearch(DictionaryPair[] dps) {
-            for (int i = 0; i < dps.length; i++) {
-                if (dps[i] == null) {
-                    return i;
-                }
-            }
-            return -1;
-        }
-
-        private int linearNullSearch(Node[] pointers) {
-            for (int i = 0; i < pointers.length; i++) {
-                if (pointers[i] == null) {
-                    return i;
-                }
-            }
-            return -1;
-        }
-
-        private void shiftDown(Node[] pointers, int amount) {
-            Node[] newPointers = new Node[this.m + 1];
-            for (int i = amount; i < pointers.length; i++) {
-                newPointers[i - amount] = pointers[i];
-            }
-            pointers = newPointers;
-        }
-
-        private void sortDictionary(DictionaryPair[] dictionary) {
-            Arrays.sort(dictionary, new Comparator<DictionaryPair>() {
-                @Override
-                public int compare(DictionaryPair o1, DictionaryPair o2) {
-                    if (o1 == null && o2 == null) {
-                        return 0;
-                    }
-                    if (o1 == null) {
-                        return 1;
-                    }
-                    if (o2 == null) {
-                        return -1;
-                    }
-                    return o1.compareTo(o2);
-                }
-            });
-        }
-
-        private Node[] splitChildPointers(InternalNode in, int split) {
-
-            Node[] pointers = in.childPointers;
-            Node[] halfPointers = new Node[this.m + 1];
-
-            for (int i = split + 1; i < pointers.length; i++) {
-                halfPointers[i - split - 1] = pointers[i];
-                in.removePointer(i);
-            }
-
-            return halfPointers;
-        }
-
-        private DictionaryPair[] splitDictionary(LeafNode ln, int split) {
-
-            DictionaryPair[] dictionary = ln.dictionary;
-
-            DictionaryPair[] halfDict = new DictionaryPair[this.m];
-
-            for (int i = split; i < dictionary.length; i++) {
-                halfDict[i - split] = dictionary[i];
-                ln.delete(i);
-            }
-
-            return halfDict;
-        }
-
-        private void splitInternalNode(InternalNode in) {
-
-            InternalNode parent = in.parent;
-
-            int midpoint = getMidpoint();
-            int newParentKey = in.keys[midpoint];
-            Integer[] halfKeys = splitKeys(in.keys, midpoint);
-            Node[] halfPointers = splitChildPointers(in, midpoint);
-
-            in.degree = linearNullSearch(in.childPointers);
-
-            InternalNode sibling = new InternalNode(this.m, halfKeys, halfPointers);
-            for (Node pointer : halfPointers) {
-                if (pointer != null) {
-                    pointer.parent = sibling;
-                }
-            }
-
-            sibling.rightSibling = in.rightSibling;
-            if (sibling.rightSibling != null) {
-                sibling.rightSibling.leftSibling = sibling;
-            }
-            in.rightSibling = sibling;
-            sibling.leftSibling = in;
-
-            if (parent == null) {
-
-                Integer[] keys = new Integer[this.m];
-                keys[0] = newParentKey;
-                InternalNode newRoot = new InternalNode(this.m, keys);
-                newRoot.appendChildPointer(in);
-                newRoot.appendChildPointer(sibling);
-                this.root = newRoot;
-
-                in.parent = newRoot;
-                sibling.parent = newRoot;
-
-            } else {
-
-                parent.keys[parent.degree - 1] = newParentKey;
-                Arrays.sort(parent.keys, 0, parent.degree);
-
-                int pointerIndex = parent.findIndexOfPointer(in) + 1;
-                parent.insertChildPointer(sibling, pointerIndex);
-                sibling.parent = parent;
-            }
-        }
-
-        private Integer[] splitKeys(Integer[] keys, int split) {
-
-            Integer[] halfKeys = new Integer[this.m];
-
-            keys[split] = null;
-
-            for (int i = split + 1; i < keys.length; i++) {
-                halfKeys[i - split - 1] = keys[i];
-                keys[i] = null;
-            }
-
-            return halfKeys;
-        }
-
-        public void insert(int key, double value) {
-            if (isEmpty()) {
-
-                LeafNode ln = new LeafNode(this.m, new DictionaryPair(key, value));
-
-                this.firstLeaf = ln;
-
-            } else {
-                LeafNode ln = (this.root == null) ? this.firstLeaf : findLeafNode(key);
-
-                if (!ln.insert(new DictionaryPair(key, value))) {
-
-                    ln.dictionary[ln.numPairs] = new DictionaryPair(key, value);
-                    ln.numPairs++;
-                    sortDictionary(ln.dictionary);
-
-                    int midpoint = getMidpoint();
-                    DictionaryPair[] halfDict = splitDictionary(ln, midpoint);
-
-                    if (ln.parent == null) {
-
-                        Integer[] parent_keys = new Integer[this.m];
-                        parent_keys[0] = halfDict[0].key;
-                        InternalNode parent = new InternalNode(this.m, parent_keys);
-                        ln.parent = parent;
-                        parent.appendChildPointer(ln);
-
-                    } else {
-                        int newParentKey = halfDict[0].key;
-                        ln.parent.keys[ln.parent.degree - 1] = newParentKey;
-                        Arrays.sort(ln.parent.keys, 0, ln.parent.degree);
-                    }
-
-                    LeafNode newLeafNode = new LeafNode(this.m, halfDict, ln.parent);
-
-                    int pointerIndex = ln.parent.findIndexOfPointer(ln) + 1;
-                    ln.parent.insertChildPointer(newLeafNode, pointerIndex);
-
-                    newLeafNode.rightSibling = ln.rightSibling;
-                    if (newLeafNode.rightSibling != null) {
-                        newLeafNode.rightSibling.leftSibling = newLeafNode;
-                    }
-                    ln.rightSibling = newLeafNode;
-                    newLeafNode.leftSibling = ln;
-
-                    if (this.root == null) {
-
-                        this.root = ln.parent;
-
-                    } else {
-                        InternalNode in = ln.parent;
-                        while (in != null) {
-                            if (in.isOverfull()) {
-                                splitInternalNode(in);
-                            } else {
-                                break;
-                            }
-                            in = in.parent;
-                        }
-                    }
-                }
-            }
-        }
-
-        public Double search(int key) {
-
-            if (isEmpty()) {
-                return null;
-            }
-
-            LeafNode ln = (this.root == null) ? this.firstLeaf : findLeafNode(key);
-
-            DictionaryPair[] dps = ln.dictionary;
-            int index = binarySearch(dps, ln.numPairs, key);
-
-            if (index < 0) {
-                return null;
-            } else {
-                return dps[index].value;
-            }
-        }
-
-        public ArrayList<Double> search(int lowerBound, int upperBound) {
-
-            ArrayList<Double> values = new ArrayList<Double>();
-
-            LeafNode currNode = this.firstLeaf;
-            while (currNode != null) {
-
-                DictionaryPair dps[] = currNode.dictionary;
-                for (DictionaryPair dp : dps) {
-
-                    if (dp == null) {
-                        break;
-                    }
-
-                    if (lowerBound <= dp.key && dp.key <= upperBound) {
-                        values.add(dp.value);
-                    }
-                }
-                currNode = currNode.rightSibling;
-
-            }
-
-            return values;
+    // B+ Tree instances for the three search criteria
+    BPlusTree idIndex = new BPlusTree();
+    BPlusTree lastNameIndex = new BPlusTree();
+    BPlusTree firstNameIndex = new BPlusTree();
+    BPlusTree levelIndex=new BPlusTree();
+
+    // Add a student to all three B+ trees
+    public void addStudent(Student student) {
+        idIndex.insert(student.getId().hashCode(), student); // Index by ID
+        lastNameIndex.insert(student.getLastName().hashCode(), student); // Index by last name
+        firstNameIndex.insert(student.getFirstName().hashCode(), student); // Index by first name
+        levelIndex.insert(student.getLevel().hashCode(),student);
+    }
+
+    // Search by exact student ID
+    public Student searchById(String id) {
+        return idIndex.search(id.hashCode());
+    }
+
+    // Search by exact last name
+    public List<Student> searchByLastName(String lastName) {
+        return lastNameIndex.searchAll(lastName.hashCode());
+    }
+
+    // Search by exact first name
+    public List<Student> searchByFirstName(String firstName) {
+        return firstNameIndex.searchAll(firstName.hashCode());
+    }
+
+    // Implementation of the B+ Tree structure
+    public class BPlusTree {
+        private int m;
+        private LeafNode firstLeaf;
+
+        // Constructor
+        public BPlusTree() {
+            this.m = 4; // Degree of the tree, can be adjusted
         }
 
         public BPlusTree(int m) {
             this.m = m;
-            this.root = null;
         }
 
-        public BPlusTree() {
-            this.m = m;
-            this.root = null;
+        // Insert method
+        public void insert(int key, Student value) {
+            if (firstLeaf == null) {
+                firstLeaf = new LeafNode();
+                firstLeaf.insert(new DictionaryPair(key, value));
+            } else {
+                LeafNode targetLeaf = findLeafNode(key);
+                if (!targetLeaf.insert(new DictionaryPair(key, value))) {
+                    // Split logic if the leaf node is full
+                    // Add necessary split handling here
+                }
+            }
+        }
+        public void delete(int key, Student value) {
+            if (firstLeaf != null) {
+                LeafNode targetLeaf = findLeafNode(key);
+                targetLeaf.delete(key, value);
+            }
         }
 
-        public class Node {
-            InternalNode parent;
+        // Search for a single value by key
+        public Student search(int key) {
+            if (firstLeaf == null) return null;
+            LeafNode targetLeaf = findLeafNode(key);
+            return targetLeaf.search(key);
         }
 
-        private class InternalNode extends Node {
-            int maxDegree;
-            int minDegree;
-            int degree;
-            InternalNode leftSibling;
-            InternalNode rightSibling;
-            Integer[] keys;
-            Node[] childPointers;
+        // Search for all students matching a key
+        public List<Student> searchAll(int key) {
+            if (firstLeaf == null) return new ArrayList<>();
+            LeafNode targetLeaf = findLeafNode(key);
+            List<Student> students = targetLeaf.searchAll(key);
+            if (!students.isEmpty()) {
+                int index = 1;
+                for (Student student : students) {
+                    System.out.println(index + " - " + student.getId() + ", " + student.getFirstName() + ", " + student.getLastName() + ", " + student.getBirth() + ", " + student.getLevel());
+                    index++;
+                }
+            } else {
+                System.out.println("No students found with the given key.");
+            }
+            return students;
+        }
 
-            private void appendChildPointer(Node pointer) {
-                this.childPointers[degree] = pointer;
-                this.degree++;
+
+        private LeafNode findLeafNode(int key) {
+            // Simplified logic to find the target leaf node
+            return firstLeaf;
+        }
+
+        // Inner classes for the B+ tree
+        private class LeafNode {
+            private List<DictionaryPair> dictionary = new ArrayList<>();
+
+            // Insert a key-value pair into the leaf node
+            public boolean insert(DictionaryPair pair) {
+                dictionary.add(pair);
+                dictionary.sort(DictionaryPair::compareTo);
+                return dictionary.size() <= m - 1; // Return false if full
+            }
+            public void delete(int key, Student value) {
+                dictionary.removeIf(pair -> pair.key == key && pair.value.equals(value));
             }
 
-            private int findIndexOfPointer(Node pointer) {
-                for (int i = 0; i < childPointers.length; i++) {
-                    if (childPointers[i] == pointer) {
-                        return i;
+            // Search for a single value by key
+            public Student search(int key) {
+                for (DictionaryPair pair : dictionary) {
+                    if (pair.key == key) {
+                        return pair.value;
                     }
                 }
-                return -1;
+                return null;
             }
 
-            private void insertChildPointer(Node pointer, int index) {
-                for (int i = degree - 1; i >= index; i--) {
-                    childPointers[i + 1] = childPointers[i];
-                }
-                this.childPointers[index] = pointer;
-                this.degree++;
-            }
-
-            private boolean isDeficient() {
-                return this.degree < this.minDegree;
-            }
-
-            private boolean isLendable() {
-                return this.degree > this.minDegree;
-            }
-
-            private boolean isMergeable() {
-                return this.degree == this.minDegree;
-            }
-
-            private boolean isOverfull() {
-                return this.degree == maxDegree + 1;
-            }
-
-            private void prependChildPointer(Node pointer) {
-                for (int i = degree - 1; i >= 0; i--) {
-                    childPointers[i + 1] = childPointers[i];
-                }
-                this.childPointers[0] = pointer;
-                this.degree++;
-            }
-
-            private void removeKey(int index) {
-                this.keys[index] = null;
-            }
-
-            private void removePointer(int index) {
-                this.childPointers[index] = null;
-                this.degree--;
-            }
-
-            private void removePointer(Node pointer) {
-                for (int i = 0; i < childPointers.length; i++) {
-                    if (childPointers[i] == pointer) {
-                        this.childPointers[i] = null;
+            // Search for all matching values by key
+            public List<Student> searchAll(int key) {
+                List<Student> result = new ArrayList<>();
+                for (DictionaryPair pair : dictionary) {
+                    if (pair.key == key) {
+                        result.add(pair.value);
                     }
                 }
-                this.degree--;
-            }
-
-            private InternalNode(int m, Integer[] keys) {
-                this.maxDegree = m;
-                this.minDegree = (int) Math.ceil(m / 2.0);
-                this.degree = 0;
-                this.keys = keys;
-                this.childPointers = new Node[this.maxDegree + 1];
-            }
-
-            private InternalNode(int m, Integer[] keys, Node[] pointers) {
-                this.maxDegree = m;
-                this.minDegree = (int) Math.ceil(m / 2.0);
-                this.degree = linearNullSearch(pointers);
-                this.keys = keys;
-                this.childPointers = pointers;
+                return result;
             }
         }
 
-        public class LeafNode extends Node {
-            int maxNumPairs;
-            int minNumPairs;
-            int numPairs;
-            LeafNode leftSibling;
-            LeafNode rightSibling;
-            DictionaryPair[] dictionary;
-
-            public void delete(int index) {
-                this.dictionary[index] = null;
-                numPairs--;
-            }
-
-            public boolean insert(DictionaryPair dp) {
-                if (this.isFull()) {
-                    return false;
-                } else {
-                    this.dictionary[numPairs] = dp;
-                    numPairs++;
-                    Arrays.sort(this.dictionary, 0, numPairs);
-
-                    return true;
-                }
-            }
-
-            public boolean isDeficient() {
-                return numPairs < minNumPairs;
-            }
-
-            public boolean isFull() {
-                return numPairs == maxNumPairs;
-            }
-
-            public boolean isLendable() {
-                return numPairs > minNumPairs;
-            }
-
-            public boolean isMergeable() {
-                return numPairs == minNumPairs;
-            }
-
-            public LeafNode(int m, DictionaryPair dp) {
-                this.maxNumPairs = m - 1;
-                this.minNumPairs = (int) (Math.ceil(m / 2) - 1);
-                this.dictionary = new DictionaryPair[m];
-                this.numPairs = 0;
-                this.insert(dp);
-            }
-
-            public LeafNode(int m, DictionaryPair[] dps, InternalNode parent) {
-                this.maxNumPairs = m - 1;
-                this.minNumPairs = (int) (Math.ceil(m / 2) - 1);
-                this.dictionary = dps;
-                this.numPairs = linearNullSearch(dps);
-                this.parent = parent;
-            }
-        }
-
-        public class DictionaryPair implements Comparable<DictionaryPair> {
+        private class DictionaryPair implements Comparable<DictionaryPair> {
             int key;
-            double value;
+            Student value;
 
-            public DictionaryPair(int key, double value) {
+            public DictionaryPair(int key, Student value) {
                 this.key = key;
                 this.value = value;
             }
 
+            @Override
             public int compareTo(DictionaryPair o) {
-                if (key == o.key) {
-                    return 0;
-                } else if (key > o.key) {
-                    return 1;
-                } else {
-                    return -1;
-                }
+                return Integer.compare(this.key, o.key);
             }
         }
+    }
 
 
-        public void insert(int key, Student value) {
-            // Insert logic
+    //menues
+    public void displayAndEditStudents( List<Student> students, Btrees database) {
+        if (!students.isEmpty()) {
+            int index = 1;
+            for (Student student : students) {
+                System.out.println(index + " - " + student.getId() + ", " + student.getFirstName() + ", " + student.getLastName() + ", " + student.getBirth() + ", " + student.getLevel());
+                index++;
+            }
+            Scanner scanner = new Scanner(System.in);
+            System.out.println("Enter the index number of the student you want to edit or type 'exit' to quit:");
+            String input = scanner.nextLine();
+            if (!input.equalsIgnoreCase("exit")) {
+                try {
+                    int selectedIndex = Integer.parseInt(input);
+                    if (selectedIndex > 0 && selectedIndex <= students.size()) {
+                        Student selectedStudent = students.get(selectedIndex - 1);
+                        //System.out.println(selectedStudent.getFirstName());
+                        // Call a method to edit the selected student
+                        System.out.println("Enter the number of the command you want:");
+                        System.out.println("1-Edit student");
+                        System.out.println("2-Delete student");
+                        System.out.println("3-Return to main menu");
+                        String input2 = scanner.nextLine();
+                        if(Objects.equals(input2, "1"))
+                            editStudent(selectedStudent);
+                        else if (Objects.equals(input2, "2"))
+                            deleteStudent(selectedStudent);
+                        else if (Objects.equals(input2, "3"))
+                            ToMainMenu(database);
+                        else
+                            System.out.println("Invalid input.");
+
+                    } else {
+                        System.out.println("Invalid index. Exiting.");
+                    }
+                } catch (NumberFormatException e) {
+                    System.out.println("Invalid input. Exiting.");
+                }
+            } else {
+                System.out.println("Exiting.");
+            }
+        } else {
+            System.out.println("No students found with the given key.");
+
         }
+    }
 
-        public Student search11(int key) {
-            // Search logic
-            return null;
+    public void displayAndEditStudents(Student student, Btrees database) {
+
+
+        System.out.println("Enter the number of the command you want:");
+        System.out.println("1-Edit student");
+        System.out.println("2-Delete student");
+        System.out.println("3-Return to main menu");
+        Scanner scanner = new Scanner(System.in);
+        String input2 = scanner.nextLine();
+        if (Objects.equals(input2, "1"))
+            editStudent(student);
+        else if (Objects.equals(input2, "2"))
+            deleteStudent(student);
+        else if (Objects.equals(input2, "3"))
+            ToMainMenu(database);
+        else
+            System.out.println("Invalid input.");
+
+
+    }
+
+    public void editStudent(Student student) {
+        System.out.println(student.getId() + ", " + student.getFirstName() + ", " + student.getLastName() + ", " + student.getBirth() + ", " + student.getLevel());
+        System.out.println("Enter the number of the command you want:");
+        System.out.println("1-Edit student first name");
+        System.out.println("2-Edit student last name");
+        System.out.println("3-Edit student university level");
+        Scanner scanner = new Scanner(System.in);
+        String input3 = scanner.nextLine();
+        System.out.println("What would you like the new edit to be?");
+
+
+        String input4 = scanner.nextLine();
+
+
+        if (Objects.equals(input3, "1")) {
+            student.setFirstName(input4);
+            System.out.println(student.getId() + ", " + student.getFirstName() + ", " + student.getLastName() + ", " + student.getBirth() + ", " + student.getLevel());
+
+        } else if (Objects.equals(input3, "2")) {
+            student.setLastName(input4);
+            System.out.println(student.getId() + ", " + student.getFirstName() + ", " + student.getLastName() + ", " + student.getBirth() + ", " + student.getLevel());
+
+        } else if (Objects.equals(input3, "3")) {
+            student.setLevel(input4);
+            System.out.println(student.getId() + ", " + student.getFirstName() + ", " + student.getLastName() + ", " + student.getBirth() + ", " + student.getLevel());
+
+        } else {
+            System.out.println("Invalid input.");
         }
-
-        public List<Student> searchByLastName(String lastName) {
-            // Search logic for last name
-            return new ArrayList<>();
-        }
-
-        public List<Student> searchByFirstName(String firstName) {
-            // Search logic for first name
-            return new ArrayList<>();
-        }
-
-        public List<Student> searchByLevel(String level) {
-            // Search logic for academic level
-            return new ArrayList<>();
-        }
     }
 
-    BPlusTree idIndex = new BPlusTree();
-    BPlusTree lastNameIndex = new BPlusTree();
-    BPlusTree firstNameIndex = new BPlusTree();
-    BPlusTree levelIndex = new BPlusTree();
-
-    public void addStudent(Student student) {
-        idIndex.insert(student.getId().hashCode(), student);
-        lastNameIndex.insert(student.getLastName().hashCode(), student);
-        firstNameIndex.insert(student.getFirstName().hashCode(), student);
-        levelIndex.insert(student.getLevel().hashCode(), student);
+    public void deleteStudent(Student student) {
+        idIndex.delete(student.getId().hashCode(), student); // Remove from ID index
+        lastNameIndex.delete(student.getLastName().hashCode(), student); // Remove from last name index
+        firstNameIndex.delete(student.getFirstName().hashCode(), student); // Remove from first name index
     }
 
-    public Student searchById(String id) {
+    public void ToMainMenu(Btrees database) {
+        System.out.println("Enter the number of the command you want:");
+        System.out.println("1-Search student");
+        System.out.println("2-Add new student");
+        System.out.println("3-Show students in academic level");
+        System.out.println("4-Exit");
+        Scanner scanner = new Scanner(System.in);
+        String input = scanner.nextLine();
 
-        return idIndex.search11(id.hashCode());
+
+        if (Objects.equals(input, "1")) {
+            //editStudent(selectedStudent);
+            System.out.println("How would you like to search for a student");
+            System.out.println("1- By first name");
+            System.out.println("2- By last name");
+            System.out.println("3- By exact student id");
+            String input3 = scanner.nextLine();
+
+
+            if (Objects.equals(input3, "1")) {
+                System.out.println("What is the first name?");
+                String inputAns = scanner.nextLine();
+                //String input2 = scanner.nextLine();
+
+                database.displayAndEditStudents(database.searchByFirstName(inputAns), database);
+
+            } else if (Objects.equals(input3, "2")) {
+                System.out.println("What is the last name?");
+                String inputAns = scanner.nextLine();
+                //String input2 = scanner.nextLine();
+
+                database.displayAndEditStudents(database.searchByLastName(inputAns),database);
+
+            } else if (Objects.equals(input3, "3")) {
+                System.out.println("What is the Id?");
+                String inputAns = scanner.nextLine();
+                Student student = database.searchById(inputAns);
+                displayAndEditStudents(student,database);
+
+            } else {
+                System.out.println("Invalid input.");
+                ToMainMenu(database);
+            }
+
+
+
+
+        }else if (Objects.equals(input, "2")) {
+
+            //deleteStudent(selectedStudent);
+            System.out.println("\n Enter Student ID: ");
+            String id = scanner.next();
+            System.out.println(" Enter First Name :");//it printing
+            String firstname = scanner.next();
+            System.out.println("Enter Last Name: ");
+            String lastName = scanner.next();
+            System.out.println("Enter Date of Birth (DD/MM/YYYY): ");
+            String birth = scanner.nextLine();
+            System.out.println("Enter Academic Level (e.g., FR, SO,JR, SR): ");
+            String level = scanner.nextLine();
+            Student newStudent = new Student(id, lastName, firstname, birth, level);
+            database.addStudent(newStudent);
+            System.out.println("Student added successfully! ");
+            System.out.println("\n--- Updated List of students --- ");
+            //database.displayAndEditStudents(database.searchByLevel(""), database);
+            //for (Student student : students) {
+             //   database.addStudent(student);
+            //}
+            //add for loop
+
+
+        }else if (Objects.equals(input, "3")) {
+            System.out.println("What is the level you want to search with");
+            String input2 = scanner.nextLine();
+            displayAndEditStudents(database.searchByLevel(input2),database);
+        }else if (Objects.equals(input, "4")) {
+            System.out.println("Exiting...");
+        }else{
+            System.out.println("Invalid input. Try again!");
+            ToMainMenu(database);}
+
+
+
     }
 
-    public List<Student> searchByLastName(String lastName) {
 
-        return lastNameIndex.searchByLastName(lastName);
-    }
-
-    public List<Student> searchByFirstName(String firstName) {
-
-        return firstNameIndex.searchByFirstName(firstName);
-    }
-
-    public List<Student> searchByLevel(String level) {
-
-        return levelIndex.searchByLevel(level);
-    }
 }
-

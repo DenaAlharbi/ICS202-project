@@ -19,6 +19,14 @@ public class Student {
     public String getId() {
         return id;
     }
+    public String getBirth() {
+        return birth;
+    }
+    public void setBirth() {
+        this.birth = birth;;
+    }
+
+
 
     public void setId(String id) {
         this.id = id;

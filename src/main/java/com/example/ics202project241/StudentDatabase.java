@@ -1,6 +1,8 @@
 package com.example.ics202project241;
 
 
+
+
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
@@ -28,13 +30,12 @@ public class StudentDatabase {
     }
 
     public static void main(String[] args) {
-        List<Student> students = readCSV("C:\\Users\\denaa\\OneDrive\\Desktop\\students-details (1).csv");
+        List<Student> students = readCSV("C:/Users/denaa/OneDrive/Desktop/students-details (1).csv");
         System.out.println(students);
         Btrees database = new Btrees();
         for (Student student : students) {
             database.addStudent(student);
         }
-        System.out.println(database);
-        System.out.println(database.searchByFirstName("Fahad"));
+        database.ToMainMenu(database);
     }
 }
