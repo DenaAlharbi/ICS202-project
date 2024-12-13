@@ -1,5 +1,8 @@
 package com.example.ics202project241;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -149,11 +152,25 @@ public class Btrees {
                 return Integer.compare(this.key, o.key);
             }
         }
-    }
+
+        public List<Student> getAllStudents() {
+            List<Student> allStudents = new ArrayList<>();
+            LeafNode current = firstLeaf;
+            while (current != null) {
+                for (DictionaryPair pair : current.dictionary) {
+                    allStudents.add(pair.value);
+                } // Move to the next leaf node by finding the next node in the dictionary
+                current = findNextLeaf(current);
+            }
+            return allStudents;
+        }
+        private LeafNode findNextLeaf(LeafNode current) {
+
+    }}
 
 
     //menues
-    public void displayAndEditStudents( List<Student> students, Btrees database) {
+    public void displayAndEditStudents(List<Student> students, Btrees database) {
         if (!students.isEmpty()) {
             int index = 1;
             for (Student student : students) {
@@ -176,9 +193,9 @@ public class Btrees {
                         System.out.println("3-Return to main menu");
                         String input2 = scanner.nextLine();
                         if(Objects.equals(input2, "1"))
-                            editStudent(selectedStudent);
+                            editStudent(selectedStudent, database);
                         else if (Objects.equals(input2, "2"))
-                            deleteStudent(selectedStudent);
+                            deleteStudent(selectedStudent,database);
                         else if (Objects.equals(input2, "3"))
                             ToMainMenu(database);
                         else
@@ -209,9 +226,9 @@ public class Btrees {
         Scanner scanner = new Scanner(System.in);
         String input2 = scanner.nextLine();
         if (Objects.equals(input2, "1"))
-            editStudent(student);
+            editStudent(student,database);
         else if (Objects.equals(input2, "2"))
-            deleteStudent(student);
+            deleteStudent(student, database);
         else if (Objects.equals(input2, "3"))
             ToMainMenu(database);
         else
@@ -220,7 +237,7 @@ public class Btrees {
 
     }
 
-    public void editStudent(Student student) {
+    public void editStudent(Student student,Btrees database) {
         System.out.println(student.getId() + ", " + student.getFirstName() + ", " + student.getLastName() + ", " + student.getBirth() + ", " + student.getLevel());
         System.out.println("Enter the number of the command you want:");
         System.out.println("1-Edit student first name");
@@ -237,24 +254,34 @@ public class Btrees {
         if (Objects.equals(input3, "1")) {
             student.setFirstName(input4);
             System.out.println(student.getId() + ", " + student.getFirstName() + ", " + student.getLastName() + ", " + student.getBirth() + ", " + student.getLevel());
+            ToMainMenu(database);
+
 
         } else if (Objects.equals(input3, "2")) {
             student.setLastName(input4);
             System.out.println(student.getId() + ", " + student.getFirstName() + ", " + student.getLastName() + ", " + student.getBirth() + ", " + student.getLevel());
+            ToMainMenu(database);
+
 
         } else if (Objects.equals(input3, "3")) {
             student.setLevel(input4);
             System.out.println(student.getId() + ", " + student.getFirstName() + ", " + student.getLastName() + ", " + student.getBirth() + ", " + student.getLevel());
+            ToMainMenu(database);
+
 
         } else {
             System.out.println("Invalid input.");
+            ToMainMenu(database);
+
         }
     }
 
-    public void deleteStudent(Student student) {
+    public void deleteStudent(Student student,Btrees database) {
         idIndex.delete(student.getId().hashCode(), student); // Remove from ID index
         lastNameIndex.delete(student.getLastName().hashCode(), student); // Remove from last name index
         firstNameIndex.delete(student.getFirstName().hashCode(), student); // Remove from first name index
+        ToMainMenu(database);
+
     }
 
     public void ToMainMenu(Btrees database) {
@@ -283,6 +310,7 @@ public class Btrees {
 
                 database.displayAndEditStudents(database.searchByFirstName(inputAns), database);
 
+
             } else if (Objects.equals(input3, "2")) {
                 System.out.println("What is the last name?");
                 String inputAns = scanner.nextLine();
@@ -290,11 +318,13 @@ public class Btrees {
 
                 database.displayAndEditStudents(database.searchByLastName(inputAns),database);
 
+
             } else if (Objects.equals(input3, "3")) {
                 System.out.println("What is the Id?");
                 String inputAns = scanner.nextLine();
                 Student student = database.searchById(inputAns);
                 displayAndEditStudents(student,database);
+
 
             } else {
                 System.out.println("Invalid input.");
@@ -334,6 +364,7 @@ public class Btrees {
             displayAndEditStudents(database.searchByLevel(input2),database);
         }else if (Objects.equals(input, "4")) {
             System.out.println("Exiting...");
+            writeCSV("C:/Users/denaa/OneDrive/Desktop/students-details (1).csv", database.);
         }else{
             System.out.println("Invalid input. Try again!");
             ToMainMenu(database);}
@@ -341,6 +372,8 @@ public class Btrees {
 
 
     }
+
+
 
 
 }

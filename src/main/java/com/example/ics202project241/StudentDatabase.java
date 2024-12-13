@@ -3,9 +3,7 @@ package com.example.ics202project241;
 
 
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,6 +25,16 @@ public class StudentDatabase {
             e.printStackTrace();
         }
         return studentsGiven;
+    }
+    public static void writeCSV(String path, List<Student> students) {
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(path))) {
+            for (Student student : students) {
+                bw.write(student.getId() + "," + student.getFirstName() + "," + student.getLastName() + "," + student.getBirth() + "," + student.getLevel());
+                bw.newLine();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public static void main(String[] args) {
